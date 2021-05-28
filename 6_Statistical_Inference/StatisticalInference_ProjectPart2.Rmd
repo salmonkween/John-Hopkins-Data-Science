@@ -1,0 +1,113 @@
+---
+title: 'PART 2: Basic Inferential Data Analysis'
+author: "WendyD"
+date: "9/9/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library(ggplot2)
+```
+
+# Load the ToothGrowth data and perform some basic exploratory data analyses
+
+```{r, echo=TRUE}
+data(ToothGrowth)
+str(ToothGrowth)
+head(ToothGrowth)
+```
+
+# Basic Summary of the data
+
+```{r, echo=TRUE}
+summary(ToothGrowth)
+```
+
+Since our data has 3 variables: len(tooth length), supp (supplement types), and dose (in mg/day), we could explore our data, using dosage as factor variable, and to see how the tooth length changes with different dosage accordingly to their supplement types
+
+
+```{r, echo=TRUE}
+ggplot(data=ToothGrowth, aes(x=factor(dose), y=len, colour=factor(dose)))+
+               facet_grid(.~ToothGrowth$supp)+
+               geom_boxplot()+
+               xlab("Dose ")+ ylab("Tooth Length")+
+               ggtitle("Tooth Length by Dosage for Every Supplement")
+
+```
+
+From the graph, it appreared that Orange juice outperformed ascorbic acid at dose 0.5mg/day and 1mg/day
+We can also compare the effectivty of 2 supplements by calculating the mean by supplements factor
+```{r,echo=TRUE}
+tapply(ToothGrowth$len, ToothGrowth$supp, mean)
+
+```
+
+This confirm our observation, Orange juice does increase the tooth length faster than ascirbic acid
+
+
+# Hypothesis Testing to compare tooth growth by supp and dose
+
+## Analyze tooth growth by supplement
+
+We test two hypothesis: First: there is no correlation in the tooth length for different supplements. Secondly, there is no correlation in tooth length acorss different doses of supplement.
+
+
+Tooth length for those taking orange juice as supplement
+```{r,echo=TRUE}
+orangejuice<- subset(ToothGrowth
+                     $len, ToothGrowth$supp == "OJ")
+```
+
+Tooth length for those taking ascorbic acid as supplement
+```{r, echo=TRUE}
+aacid<- subset(ToothGrowth$len, ToothGrowth$supp =="VC")
+
+```
+
+Compute t test to see if there is any significant difference in the tooth length for people taking different supplement
+
+```{r,echo=TRUE}
+t.test(orangejuice, aacid )
+
+```
+
+
+Since the p value is > than 0.05, we cannot reject the null hypothesis, and concluded that there is no significant difference in tooth length for different supplements
+
+## Analyze tooth growth across dosages
+
+```{r, echo=TRUE}
+dose0.5<- subset(ToothGrowth$len, ToothGrowth$dose == "0.5")
+dose1<- subset(ToothGrowth$len, ToothGrowth$dose == "1")
+dose2<- subset(ToothGrowth$len, ToothGrowth$dose == "2")
+```
+
+Compute t test to see if there is any significant difference in the tooth length for people taking different dosesages
+
+Dose 0.5 and dose 1mg/day
+
+```{r, echo=TRUE}
+t.test(dose0.5, dose1,paired = FALSE, alternative = "less",  var.equal = FALSE )
+```
+
+Dose 1 and dose 2
+```{r,echo=TRUE}
+t.test(dose1, dose2,paired = FALSE, alternative = "less",  var.equal = FALSE )
+
+```
+
+
+Dose 0.5 and Dose 2 mg/day
+
+```{r,echo=false}
+t.test(dose0.5, dose2,paired = FALSE, alternative = "less",  var.equal = FALSE )
+
+```
+
+
+Since the p value for both 3 t test are very small, we have to reject the null hypothesis and concluded that there are correlation in dosages and tooth length
+
+# Conclusion
+We concluded that there is  no significant correlation in taking orange juice or ascorbic acid in regard to tooth lengths. We analyzed the correlation between 0.5 and 1 mg/day, 0.5 and 2mg/day, and 1mg and 2mg/day. There are  strong correlation between 3 different dosages and the tooth length to one another. 

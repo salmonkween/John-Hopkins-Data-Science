@@ -1,0 +1,120 @@
+---
+title: "MachineLearning_Proj"
+author: "WendyD"
+date: "05/29/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load required packages
+```{r, warning=FALSE}
+library(caret)
+library(ggplot2)
+library(tidyverse)
+library(randomForest)
+```
+
+# Load Data
+
+Read train and test set. Using excel, we saw that there is some #DIV/0! and blank value data, hence we remeove this with na.strings parameter 
+```{r}
+train.df<-read.csv('pml-training.csv', na.strings= c("#DIV/0!")) 
+test.df <- read.csv('pml-testing.csv', na.strings = c("#DIV/0!"))
+dim(train.df)
+dim(test.df)
+```
+
+# Preprocessing Data
+
+## Remove unnecessary variables which is the time frame, time window, and users
+
+```{r}
+train.df <- train.df[ , -c(1:7)]
+test.df <- test.df[ , -c(1:7)]
+dim(train.df)
+
+```
+
+## Feature Selection
+
+Remove column has more than 95 NA and near zeri variance
+
+```{r}
+thrshold <- dim(train.df)*0.95
+#remove column has 95% or more NA or ""  value
+goodcolumn <- !apply(train.df, 2, function(x) sum(is.na(x))>thrshold || sum(x=="")>thrshold)
+train.df <- train.df[ ,goodcolumn]
+
+#remove near zero variance column
+badcolumn <- nearZeroVar(train.df, saveMetrics = TRUE)
+#having the column with near zero variance = TRUE ->> remove these column
+train.df <- train.df[ , badcolumn$nzv==FALSE]
+
+train.df$classe <- factor(train.df$classe)
+
+
+#Repeat the same thing for test data set
+goodcolumn2 <- !apply(test.df, 2, function(x) sum(is.na(x))>thrshold || sum(x=="")>thrshold)
+test.df <- test.df[ ,goodcolumn2]
+badcolumn2 <- nearZeroVar(test.df, saveMetrics = TRUE)
+
+test.df <- test.df[ ,badcolumn2$nzv==FALSE]
+testing <- test.df
+testing$classe <- NA
+
+```
+
+## Split training set into train and validation set
+
+```{r}
+set.seed(123)
+trainobject <- createDataPartition(train.df$classe, p=0.8, list=FALSE)
+training <- train.df[trainobject,]
+validation <- train.df[-trainobject,]
+dim(training); dim(validation)
+```
+
+
+
+# Train Model
+Use random forest, gbm or lda
+
+
+```{r}
+#Train 3 different models
+#verbose(data_out = TRUE, data_in = FALSE, info = FALSE, ssl = FALSE)
+mod1 <- train(classe ~ ., data=training, method="rf")  #random forest
+#mod2 <- train(classe ~ ., data=training, method="gbm")
+#mod3 <- train(classe ~ ., data=training, method="lda")
+
+pred1 <- predict(mod1, validation)
+#pred1.2<- predict(mod1,training)
+#pred2 <- predict(mod2, validation)
+#pred3 <- predict(mod3, validation)
+```
+
+
+
+
+```{r}
+confusionMatrix(pred1, validation$classe)
+#confusionMatrix(pred1.2, training$classe)
+
+```
+
+```{r}
+pml_write_files = function(x){
+n = length(x)
+for(i in 1:n){
+filename = paste0("problem_id_",i,".txt")
+write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+}
+}
+x <- test.df
+
+answer <- predict(mod1,testing)
+answers
+```

@@ -1,0 +1,150 @@
+---
+title: "Severe Weather Disaster and Its Impacts on Economy and Public Health"
+author: "WendyD"
+date: "9/2/2020"
+output: html_document
+---
+# Sypnosis
+In this particular project, we are investigating the impact of storm and severe weather phenomenon on the US economy and public health. We used the data provided by the National Oceanic and Atmospheric Administration. 
+
+To carry out the analysis, we looked at the fatalities and injuries counts for public health impact estimation. On the other hand, we also analyzed property damage and crop damage, to better understand the economic consequences. From these analysis, we drew conclusions on which severe weather type cause the most impacts, public health and economic wise. 
+
+# Data Processing
+
+First we download the data from NOAA database, and then use read.csv to read data
+
+```{r, echo=TRUE, cache=TRUE}
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", destfile = "stormdata")
+data1<-read.csv("./stormdata")
+dim(data1)
+```
+
+We saw that the storm data has 902297 observation with total 37 different values/columns
+
+# Data Analysis 
+
+We take a closer look at the data
+```{r, echo=TRUE}
+head(data1, n=5)
+summary(data1)
+```
+
+From the given data, it would be helpful if we transformed the data into the format that R would understand, especially regarding to the "date" variable.
+
+
+```{r,echo=TRUE, cache=TRUE}
+data1$BGN_DATE<-as.Date(data1$BGN_DATE, format = "%m/%d/%Y %H:%M:%S")
+```
+
+After this, we would like to take a overlook over the number of natural disaster events that happened across the year. This would be helpful in seeing how the data is collected and spread out. 
+
+We are only interested in the year data. Thus we added a new column with only year data, extracted from the original "date" variable
+
+```{r,echo=TRUE, cache=TRUE}
+data1$year<-as.numeric(format(data1$BGN_DATE, "%Y"))
+```
+
+Plotting
+
+```{r,echo=TRUE}
+hist(data1$year, main = "Disasters across years", xlab = "Year", ylab = "Number of events")
+```
+
+
+# Data Analysis (cont)
+
+## Question: What type of event type cause the most harm to population health
+
+To answer this question, we will look into the fatalities and injuries variable
+
+Caculating the total fatalities of each types of event. Since there are a lots of events type, it would be helpful to only take the top 10 events that caused the most fatalities.
+
+```{r, echo=TRUE, cache=TRUE}
+totalfatal<-aggregate(data1$FATALITIES~data1$EVTYPE, data=data1, sum)
+colnames(totalfatal)<- c("Events", "Fatalities")
+totalfatalsorted<- totalfatal[with(totalfatal, order(-totalfatal$Fatalities)),][1:10,]
+
+```
+
+Calculating the total injuries of each event types. 
+
+```{r, echo=TRUE}
+totalInjury<-aggregate(data1$INJURIES~data1$EVTYPE, data=data1, sum)
+colnames(totalInjury)<-c("Events", "Injuries")
+totalInjurysorted<- totalInjury[with(totalInjury, order(-totalInjury$Injuries)),][1:10,]
+```
+
+Now plotting the total fatalities and total injuries side by side to see which events caused the most harm to public health
+
+```{r,echo=TRUE}
+library(ggplot2)
+library(ggpubr)
+```
+
+```{r, echo=TRUE}
+
+FA<-ggplot(data=totalfatalsorted, aes(x= Events, y= Fatalities))+
+  geom_bar(stat='identity')+
+  xlab("Events")+ylab("Number of Fatalities")+
+  ggtitle("Total Fatalities across types of event")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1,margin = margin(b = 5)))
+
+INJ<-ggplot(data=totalInjurysorted, aes(x=Events, y=Injuries))+
+  geom_bar(stat='identity')+
+  xlab("Events")+ylab("Number of Injuries")+
+  ggtitle("Total Injuries across events")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, margin = margin(b = 5)))
+
+ggarrange(FA,INJ, nrow=1)
+```
+
+
+## Across the US, which types of events caused the most economic damages?
+
+To analyze the economic damages, we will investigate the 2 variables: property damage (propdmg) and crop damage (cropdmg)
+
+First step, caculate the total property damage based on events type. Get the top 10 most costly disaster
+
+```{r, echo=TRUE, cache=TRUE}
+totalPROP<-aggregate(data1$PROPDMG~data1$EVTYPE, data=data1, sum)
+colnames(totalPROP)<- c("Events", "PropDamage")
+totalPROPsorted<- totalPROP[with(totalPROP, order(-totalPROP$PropDamage)),][1:10,]
+```
+
+
+Repeat the same steps with Crop damage
+
+```{r, echo=TRUE, cache=TRUE}
+totalCROP<-aggregate(data1$CROPDMG~data1$EVTYPE, data=data1, sum)
+colnames(totalCROP)<- c("Events", "CropDamage")
+totalCROPsorted<- totalCROP[with(totalCROP, order(-totalCROP$CropDamage)),][1:10,]
+```
+
+Plot the total crop damage and total property damage, and evaluate economic consequences
+
+```{r, echo=TRUE}
+PROP<-ggplot(data=totalPROPsorted, aes(x= reorder(Events,-PropDamage), y= PropDamage))+
+  geom_bar(stat='identity')+
+  xlab("Events")+ylab("Property Damages")+
+  ggtitle("Property Damages")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1,margin = margin(b = 5)))
+
+CROP<-ggplot(data=totalCROPsorted, aes(x= reorder(Events, -CropDamage), y= CropDamage))+
+  geom_bar(stat='identity')+
+  xlab("Events")+ylab("Crop Damage")+
+  ggtitle("Crop Damages for top 10 events")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1,margin = margin(b = 5)))
+
+ggarrange(PROP,CROP, nrow=1)
+```
+
+
+# Results/Conclusion
+
+From graph 1, we see that tornado caused the most injuries and fatalities across the board. The second type of event that caused the most death is excessive heat. While with Injuries, TSTM Wind, Flood and Excessive Heat are on the same tier, 2nd place. 
+
+From the 2nd graph, most of the property damage is caused by tornado, while hail caused the most crop damages expense. 
+
+
+
+

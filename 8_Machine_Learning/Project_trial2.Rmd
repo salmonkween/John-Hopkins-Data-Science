@@ -1,0 +1,118 @@
+---
+title: "Project"
+author: "WendyD"
+date: "5/28/2021"
+output: html_document
+---
+```{r}
+#load required package
+library(caret)
+library(randomForest)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load data
+```{r, echo=TRUE}
+downloadcsv <- function(url, nastrings) {
+    temp <- tempfile()
+    download.file(url, temp, method = "curl")
+    data <- read.csv(temp, na.strings = nastrings)
+    unlink(temp)
+    return(data)
+}
+
+trainurl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+train <- downloadcsv(trainurl, c("", "NA", "#DIV/0!"))
+
+testurl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+test <- downloadcsv(testurl, c("", "NA", "#DIV/0!"))
+
+```
+
+```{r, echo=TRUE}
+dim(train)
+#proportion of each group in outcome variable
+table(train$classe)
+```
+
+split train data into training and validation set 80 20
+```{r}
+
+set.seed(123456)
+trainset <- createDataPartition(train$classe, p = 0.8, list = FALSE)
+Training <- train[trainset, ]
+Validation <- train[-trainset, ]
+```
+
+
+Remove zero variance variable, column with more than 40% missing value and " "
+
+```{r, echo=TRUE}
+# exclude near zero variance features
+nzvcol <- nearZeroVar(Training)
+Training <- Training[, -nzvcol]
+
+# exclude columns with 40% ore more missing values exclude descriptive AKA has more than 60% valid values
+# columns like name etc
+cntlength <- sapply(Training, function(x) {
+    sum(!(is.na(x) | x == ""))
+})    #sum of all row that has NO NA value or ""
+
+# identify these column that has LESS than 60% valid values
+nullcol <- names(cntlength[cntlength < 0.6 * length(Training$classe)]) 
+descriptcol <- c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", 
+    "cvtd_timestamp", "new_window", "num_window")   #columns to remove cause it add no value
+excludecols <- c(descriptcol, nullcol)
+Training <- Training[, !names(Training) %in% excludecols]
+```
+
+#Model Train
+
+```{r, echo =TRUE}
+Training$classe <- factor(Training$classe)
+rfModel <- randomForest(classe ~ ., data = Training, importance = TRUE, ntrees = 10)
+
+```
+
+#Model Prediction
+
+See how the model perform with validation set
+
+```{r, echo=TRUE}
+Validation$classe <- factor(Validation$classe)
+pvalidation <- predict(rfModel, Validation)
+print(confusionMatrix(pvalidation, Validation$classe))
+
+```
+
+The accuracy for validation set is 99.7% so our model is doing pretty goid
+
+# Predict Test set
+
+```{r, echo=TRUE}
+ptest <- predict(rfModel, test)
+ptest
+
+```
+
+
+Export our prediction to answer key
+
+```{r}
+answers <- as.vector(ptest)
+
+pml_write_files = function(x) {
+    n = length(x)
+    for (i in 1:n) {
+        filename = paste0("problem_id_", i, ".txt")
+        write.table(x[i], file = filename, quote = FALSE, row.names = FALSE, 
+            col.names = FALSE)
+    }
+}
+
+answer_key <- pml_write_files(answers)
+answer_key
+```
